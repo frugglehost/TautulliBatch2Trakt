@@ -83,8 +83,8 @@ Run script for initial setup and follow instructions
 
 ## Usage
 ```
---setup             Setup aplication
---reset             Reset settings and revoke token
+-setup              Setup aplication
+-reset              Reset settings and revoke token
 
 -m                  Media type (movie, show, episode)
 -a                  Action (start, pause, stop)
