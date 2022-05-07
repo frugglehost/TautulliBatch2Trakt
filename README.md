@@ -49,7 +49,7 @@ Run script for initial setup and follow instructions
 ```
 CD "<Enter Install Path>"
 Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
-# Press "Yes", One the powershell window is closed settings will revert back.
+# Press "Yes", Once the powershell window is closed the settings will revert back.
 .\TautulliBatch2Trakt.ps1 -setup
 ```
 
