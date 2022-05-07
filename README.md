@@ -46,7 +46,14 @@ Add the follow settings:
 **Save the Client ID and Client Secret**
 
 Run script for initial setup and follow instructions  
-`.\TautulliBatch2Trakt.ps1 -setup`
+```
+CD "<Enter Install Path>"
+Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
+# Press "Yes", One the powershell window is closed settings will revert back.
+.\TautulliBatch2Trakt.ps1 -setup
+```
+
+The script will automaticly copy the code for you to enter into Trakt.
 
 
 
