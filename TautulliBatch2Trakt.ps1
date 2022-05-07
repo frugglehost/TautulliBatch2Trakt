@@ -29,6 +29,30 @@
 #Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
 #Remove-Variable * -ErrorAction SilentlyContinue; Remove-Module *; $error.Clear();
 
+##############################
+## Default Global Variables ##
+##############################
+
+# Clear the screen for a fresh start.
+clear
+
+## OS Detection - Might be used in the future
+$OSType=(Get-WmiObject -class Win32_OperatingSystem).Caption
+
+## App info
+$APP_VER="0.0.2"
+$APP_DATE=Get-Date -UFormat "%Y-%m-%d"
+
+
+## Script path and names
+$SCRIPTFULL=$MyInvocation.MyCommand.Path
+
+$SCRIPTFILE=Split-Path -Path $SCRIPTFULL -Leaf
+$SCRIPTNAME=$SCRIPTFILE.TrimEnd(".ps1")
+$SCRIPTPATH=Split-Path -Path $SCRIPTFULL
+$ScriptData=$SCRIPTPATH + "\" + $SCRIPTNAME + ".data"
+$ScriptDebug=$SCRIPTPATH + "\" + $SCRIPTNAME + ".debug" #Only used if present.
+$ScriptLog=$SCRIPTPATH + "\" + $SCRIPTNAME + ".log" #Only used if present.
 
 ###############
 ## Functions ##
@@ -41,6 +65,70 @@ function CheckDash([string]$ValuePassed) {
     } else {
         return $ValuePassed
     }
+}
+
+# Saves the profile data into the Data (Structured as a JSON)
+function saveDataFile (
+    [string]$str_PlexUser,
+    [string]$str_TRAKT_APP_ID,
+    [string]$str_TRAKT_APP_SECRET,
+    [string]$str_TRAKT_DEVICE_CODE,
+    [string]$str_TRAKT_USER_CODE,
+    [string]$str_TRAKT_TOKEN_TYPE,
+    [string]$str_TRAKT_SCOPE,
+    [string]$str_TRAKT_ACCESS_TOKEN,
+    [string]$str_TRAKT_REFRESH_TOKEN,
+     [int32]$int_TRAKT_EXPIRES_IN,
+     [int32]$int_TRAKT_CREATED_AT,
+    [string]$str_DataPath) {
+
+
+    #Create JSON data on the fly and fill it with info from user input and/or Trakt.
+    $NewJSONString= "{ 
+        `"PLexUser`" : `""+$str_PlexUser+"`",
+        `"client_id`" : `""+$str_TRAKT_APP_ID+"`",
+        `"client_secret`" : `""+$str_TRAKT_APP_SECRET+"`",
+        `"device_code`" : `""+$str_TRAKT_DEVICE_CODE+"`",
+        `"user_code`" : `""+$str_TRAKT_USER_CODE+"`",
+        `"access_token`" : `""+$str_TRAKT_ACCESS_TOKEN+"`",
+        `"token_type`" : `""+$str_TRAKT_TOKEN_TYPE+"`",
+        `"expires_in`" : `""+$int_TRAKT_EXPIRES_IN+"`",
+        `"refresh_token`" : `""+$str_TRAKT_REFRESH_TOKEN+"`",
+        `"scope`" : `""+$str_TRAKT_SCOPE+"`",
+        `"created_at`" : `""+$int_TRAKT_CREATED_AT+"`"
+    }"
+
+    $NewPSObject= ConvertFrom-Json -InputObject $NewJSONString
+    
+
+    $combined = @()
+    #Check if there is an exisiting Data file with user token info.
+    if ([System.IO.File]::Exists($ScriptData)) {
+        $DataJSON=Get-Content $str_DataPath | ConvertFrom-Json
+        
+        $DataJSONRows=($DataJSON | measure).count
+        for ($i = 0; $i -le $DataJSONRows-1; $i++) {
+            if ($DataJSON[$i].PLexUser -ne $PlexUser) { 
+                $combined += $DataJSON[$i]
+            }
+        }
+
+
+        # Merge data.
+        $combined += $NewPSObject
+    }else{
+        # No merge required pass the variable along.
+        $combined=$NewPSObject
+    }
+    
+    
+    # Save the token data for resue.
+    $combined | ConvertTo-Json -depth 32 | Set-Content -Path $str_DataPath
+    Write-Host "The Data file has been updated."
+
+    # Dam... https://www.youtube.com/watch?v=SiMHTK15Pik
+    if ([System.IO.File]::Exists($ScriptLog)) { Add-Content $ScriptLog "Status: 9999 - User: $PlexUser - Action: SavedFile - $($($body | ConvertTo-Json) -replace '\s+', '') " }
+
 }
 
 
@@ -67,105 +155,20 @@ for ($i=0; $i -lt $numOfArgs; $i++)
         "-a" {$Action=CheckDash($args[$i+1])}
         "-PlexUser" {$PlexUser=CheckDash($args[$i+1])}
         "-setup" {$RunSetup=$true}
-        "-reset" {}
+        "-reset" {$RunReset=$true}
         "-refreshToken" {$RunRefresh=$true}
         "-help" {}
     }
 }
 
 
-#######################
-## Default Variables ##
-#######################
 
-# Clear the screen for a fresh start.
-clear
-
-## OS Detection - Might be used in the future
-$OSType=(Get-WmiObject -class Win32_OperatingSystem).Caption
-
-## App info
-$APP_VER=0.0.1
-$APP_DATE=Get-Date -UFormat "%Y-%m-%d"
-
-
-## Script path and names
-$SCRIPTFULL=$MyInvocation.MyCommand.Path
-$SCRIPTFULL
-
-$SCRIPTFILE=Split-Path -Path $SCRIPTFULL -Leaf
-$SCRIPTNAME=$SCRIPTFILE.TrimEnd(".ps1")
-$SCRIPTPATH=Split-Path -Path $SCRIPTFULL
-$ScriptData=$SCRIPTPATH + "\" + $SCRIPTNAME + ".data"
-$ScriptConf=$SCRIPTPATH + "\" + $SCRIPTNAME + ".config"
-$ScriptDebug=$SCRIPTPATH + "\" + $SCRIPTNAME + ".debug"
 
 
 
 ######################
 ## Aplication Setup ##
 ######################
-
-function saveDataFile (
-    [string]$str_PlexUser,
-    [string]$str_TRAKT_APP_ID,
-    [string]$str_TRAKT_APP_SECRET,
-    [string]$str_TRAKT_DEVICE_CODE,
-    [string]$str_TRAKT_USER_CODE,
-    [string]$str_TRAKT_TOKEN_TYPE,
-    [string]$str_TRAKT_SCOPE,
-    [string]$str_TRAKT_ACCESS_TOKEN,
-    [string]$str_TRAKT_REFRESH_TOKEN,
-     [int32]$int_TRAKT_EXPIRES_IN,
-     [int32]$int_TRAKT_CREATED_AT,
-    [string]$str_DataPath) {
-
-
-    #Create JSON data on the fly and fill it with info from user input and Trakt.
-    $NewJSONString= "{ 
-        `"PLexUser`" : `""+$str_PlexUser+"`",
-        `"client_id`" : `""+$str_TRAKT_APP_ID+"`",
-        `"client_secret`" : `""+$str_TRAKT_APP_SECRET+"`",
-        `"device_code`" : `""+$str_TRAKT_DEVICE_CODE+"`",
-        `"user_code`" : `""+$str_TRAKT_USER_CODE+"`",
-        `"access_token`" : `""+$str_TRAKT_ACCESS_TOKEN+"`",
-        `"token_type`" : `""+$str_TRAKT_TOKEN_TYPE+"`",
-        `"expires_in`" : `""+$int_TRAKT_EXPIRES_IN+"`",
-        `"refresh_token`" : `""+$str_TRAKT_REFRESH_TOKEN+"`",
-        `"scope`" : `""+$str_TRAKT_SCOPE+"`",
-        `"created_at`" : `""+$int_TRAKT_CREATED_AT+"`"
-    }"
-
-    $NewPSObject= ConvertFrom-Json -InputObject $NewJSONString
-    
-
-    $combined = @()
-    #Check if there is an exisiting Data file with user token info.
-    if ([System.IO.File]::Exists($ScriptData)) {
-        $DataJSON=Get-Content $str_DataPath | ConvertFrom-Json
-        
-        $DataJSONRows=$DataJSON.Count
-        for ($i = 0; $i -le $DataJSONRows-1; $i++) {
-            if ($DataJSON[$i].PLexUser -ne $PlexUser) { 
-                $combined += $DataJSON[$i]
-            }
-        }
-
-
-        
-        $combined += $NewPSObject
-    }else{
-        $combined=$NewPSObject
-    }
-    
-    
-    # Save the token data for resue.
-    $combined | ConvertTo-Json -depth 32 | Set-Content -Path $str_DataPath
-    Write-Host "The Data file has been updated."
-
-}
-
-
 
 function scriptSetup() { 
     Write-Host "Starting up Setup Procedure."
@@ -227,6 +230,8 @@ function scriptSetup() {
 
                     $TraktOAuth=$TraktOAuth.Content | ConvertFrom-Json
                     Write-Host "Status: $Stats Sucess"
+
+                    if ([System.IO.File]::Exists($ScriptLog)) { Add-Content $ScriptLog "Status: $Stats - User: $PlexUser - Action: $Action - $($($body | ConvertTo-Json) -replace '\s+', '') " }
                 
                 } catch {
                     
@@ -339,6 +344,8 @@ function refreshToken() {
             #Save the Data
             saveDataFile $PlexUser $TRAKT_APPID $TRAKT_APPSECRET $DeviceCode $UserCode $OTokentype $OScope $OAccessToken $ORefreshToken $OExpiresIn $OCreatedAt $ScriptData
 
+            if ([System.IO.File]::Exists($ScriptLog)) { Add-Content $ScriptLog "Status: $Stats - User: $PlexUser - Action: $Action - $($($body | ConvertTo-Json) -replace '\s+', '') " }
+
             }
         } else {
             Write-Host "No user was found to refresh."
@@ -353,9 +360,50 @@ function refreshToken() {
 
 }
 
+function resetToken() {
+
+    while ([string]::IsNullOrEmpty($PlexUser)){
+        $PlexUser = Read-Host "Enter the Plex username"
+    }
+
+    $combined = @()
+    # Check if we have a username to refresh the record.
+    if ([System.IO.File]::Exists($ScriptData)) {
+        
+        $DataJSON=Get-Content $ScriptData | ConvertFrom-Json
+        
+        $DataJSONRows=($DataJSON | measure).count
+        for ($i = 0; $i -le $DataJSONRows-1; $i++) {
+            if ($DataJSON[$i].PLexUser -ne $PlexUser) { 
+                $combined += $DataJSON[$i]
+            }
+        }
+
+
+        # Save the token data for resue.
+        if(($combined | measure).count -gt 0) {
+
+            $combined | ConvertTo-Json -depth 32 | Set-Content -Path $ScriptData
+            Write-Host "The Data file has been updated."
+            if ([System.IO.File]::Exists($ScriptLog)) { Add-Content $ScriptLog "Status: 200 - User: $PlexUser - Action: RemovedData - $($($combined | ConvertTo-Json) -replace '\s+', '') " }
+        } else {
+            Remove-Item -Path "$ScriptData"
+            Write-Host "The Data file has been removed."
+            if ([System.IO.File]::Exists($ScriptLog)) { Add-Content $ScriptLog "Status: 201 - User: $PlexUser - Action: DeleatedData - $ScriptData " }
+        }
+
+    } else {
+        Write-Host "Missing data file: $ScriptData"
+        if ([System.IO.File]::Exists($ScriptLog)) { Add-Content $ScriptLog "Status: 404 - User: $PlexUser - Action: MissingData - $ScriptData " }
+        exit
+    }
+
+}
+
 
 if ($RunSetup) { scriptSetup }
-if ($RunRefresh) { refreshToken }
+elseif ($RunRefresh) { refreshToken }
+elseif ($RunReset) { resetToken }
 
 
 $FoundUser=$false
@@ -378,7 +426,7 @@ if ([System.IO.File]::Exists($ScriptData)) {
     }
     
     # This should not ever happen but if we have different inputs all adding to the Data file.
-    if ($PlexUserData.Count -gt 1) { Write-Host "Warnning $Count records found for the same user $PlexUser" }
+    if ($PlexUserData.Count -gt 1) { Write-Host "Warnning $Count records found for the same user $PlexUser " }
 
     #Look at the last record of data found for the user.
     if ($PlexUserData.Count -gt 0) {
@@ -415,8 +463,6 @@ if ([System.IO.File]::Exists($ScriptData)) {
 
 
 
-
-
 ##############
 ## Scrobble ##
 ##############
@@ -441,7 +487,7 @@ if ($FoundUser) {
 
         }
 
-        $body=$body + ",`"progress`": $Progress, `"app_version`": `"0.0.1`", `"app_date`": `"$APP_DATE`"}"
+        $body=$body + ",`"progress`": $Progress, `"app_version`": `"$APP_VER`", `"app_date`": `"$APP_DATE`"}"
 
 
         $Uri="https://api.trakt.tv/scrobble/"+$Action
@@ -469,7 +515,7 @@ if ($FoundUser) {
 
         Write-Host "Status Code:" $Stats
 
-        Add-Content History.txt "Status: $Stats - User: $PlexUser - Action: $Action - $body"
+        if ([System.IO.File]::Exists($ScriptLog)) {Add-Content $ScriptLog "Status: $Stats - User: $PlexUser - Action: $Action - $body"}
 
     }
 }
