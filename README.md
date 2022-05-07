@@ -60,7 +60,7 @@ Run script for initial setup and follow instructions
 - **Script Folder**
   - `<script path location>`
 - **Script File**
-  - `tautulli2trakt.sh`
+  - `TautulliBatch2Trakt.sh`
 
 #### Triggers
 - Playback Start 
