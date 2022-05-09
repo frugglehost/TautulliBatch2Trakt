@@ -68,7 +68,7 @@ The script will automaticly copy the code for you to enter into Trakt.
 - **Script Folder**
   - `<script path location>`
 - **Script File**
-  - `TautulliBatch2Trakt.sh`
+  - `TautulliBatch2Trakt.ps1`
 
 #### Triggers
 - Playback Start 
