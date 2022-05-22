@@ -1,7 +1,7 @@
 <br />
 <p align="center">
-  <a href="https://github.com/Generator/tautulli2trakt">
-    <img src="logo.png" alt="Logo In The Works" width="80" height="80">
+  <a href="https://github.com/frugglehost/TautulliBatch2Trakt">
+    <img src="logo.png" alt="Logo" width="80" height="80">
   </a>
 
   <h3 align="center">Tautulli Batch 2 Trakt</h3>
