@@ -111,6 +111,8 @@ The script will automaticly copy the code for you to enter into Trakt.
 * [Frequently Asked Questions](TBD)  
 * [Troubleshooting](TBD)
 
+[![Github All Releases](https://img.shields.io/github/downloads/frugglehost/TautulliBatch2Trakt/total.svg)]()
+
 ## License
 Distributed under the GPL License.
 
