@@ -27,7 +27,8 @@ Powershell script to send Tautulli notificaions for multiple users to Trakt.
 
 ## Getting Started
 ### Prerequisites
-Windows only  
+- Windows
+- PowerShell 3 and higher
 
 ### Installation
     CD "<Enter Install Path>"
@@ -124,3 +125,6 @@ Distributed under the GPL License.
 - https://github.com/dabiggm0e/plextrakt  
 - https://github.com/trakt/Plex-Trakt-Scrobbler
 - https://github.com/Generator/tautulli2trakt
+
+## Bug Squashers!
+* <a href="https://github.com/TheGeeKing">TheGeeKing</a>
