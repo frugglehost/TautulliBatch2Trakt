@@ -28,7 +28,7 @@ assignees: ''
  - PowerShell Version: [e.g. 3, 4, 5, ...]
 
 **Error Message(s)**
-- Submit any error messages directly if avaliable. 
+- Submit any error messages directly if available. 
 
 **Additional context**
 - Add any other context about the problem here.
