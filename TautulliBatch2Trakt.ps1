@@ -1,8 +1,7 @@
 #    Description:  Notificaion script for Tautulli <https://tautulli.com/> to 
 #                  automatically scrobble media to Trakt.tv.
 #
-#    Contributors: Bassed off of the https://github.com/Generator/tautulli2t
-#                  rakt script. 
+#    Contributors: Bassed off of the Generator/tautulli2trakt script. 
 #
 #    Copyright (C) 2022 FruggleHost <FruggleHost+TautulliBatch _AT_ gmail _DOT_ com>
 #
@@ -36,11 +35,15 @@
 # Clear the screen for a fresh start.
 clear
 
-## OS Detection - Might be used in the future
+## OS version detection - Might be used in the future
 $OSType=(Get-WmiObject -class Win32_OperatingSystem).Caption
 
+## PS version detection - Used below.
+$PSVersion=[INT]((Get-Host | Select-Object Version).Version).Major
+
+
 ## App info
-$APP_VER="0.0.2"
+$APP_VER="0.0.3"
 $APP_DATE=Get-Date -UFormat "%Y-%m-%d"
 
 
@@ -54,11 +57,27 @@ $ScriptData=$SCRIPTPATH + "\" + $SCRIPTNAME + ".data"
 $ScriptDebug=$SCRIPTPATH + "\" + $SCRIPTNAME + ".debug" #Only used if present.
 $ScriptLog=$SCRIPTPATH + "\" + $SCRIPTNAME + ".log" #Only used if present.
 
+##################
+## System Check ##
+##################
+
+$PSVersionMin=3
+
+if ($PSVersion -lt $PSVersionMin){
+    ## The following are required:
+    ##    "$NewPSObject= [ordered]"  Requires Version 3 or higher.
+    
+    Write-Host "`n`nThe Powershell script `"$SCRIPTNAME`" is not compatible.`nPlease install powershell version $PSVersionMin or higher.`n`n"
+
+    Pause
+    Exit
+}
+
 ###############
 ## Functions ##
 ###############
 
-# Quick check to see if there is a "-" in a arg or not.
+# Quick check to see if there is a "-" in a arg( Im a pirate ) or not.
 function CheckDash([string]$ValuePassed) {
     if ($ValuePassed.StartsWith("-")) {
         return ""
@@ -83,22 +102,20 @@ function saveDataFile (
     [string]$str_DataPath) {
 
 
-    #Create JSON data on the fly and fill it with info from user input and/or Trakt.
-    $NewJSONString= "{ 
-        `"PLexUser`" : `""+$str_PlexUser+"`",
-        `"client_id`" : `""+$str_TRAKT_APP_ID+"`",
-        `"client_secret`" : `""+$str_TRAKT_APP_SECRET+"`",
-        `"device_code`" : `""+$str_TRAKT_DEVICE_CODE+"`",
-        `"user_code`" : `""+$str_TRAKT_USER_CODE+"`",
-        `"access_token`" : `""+$str_TRAKT_ACCESS_TOKEN+"`",
-        `"token_type`" : `""+$str_TRAKT_TOKEN_TYPE+"`",
-        `"expires_in`" : `""+$int_TRAKT_EXPIRES_IN+"`",
-        `"refresh_token`" : `""+$str_TRAKT_REFRESH_TOKEN+"`",
-        `"scope`" : `""+$str_TRAKT_SCOPE+"`",
-        `"created_at`" : `""+$int_TRAKT_CREATED_AT+"`"
-    }"
-
-    $NewPSObject= ConvertFrom-Json -InputObject $NewJSONString
+    #Create data on the fly and fill it with info from user input and/or Trakt.
+    $NewPSObject= [ordered]@{ 
+        "PLexUser"      = $str_PlexUser
+        "client_id"     = $str_TRAKT_APP_ID
+        "client_secret" = $str_TRAKT_APP_SECRET
+        "device_code"   = $str_TRAKT_DEVICE_CODE
+        "user_code"     = $str_TRAKT_USER_CODE
+        "scope"         = $str_TRAKT_SCOPE
+        "token_type"    = $str_TRAKT_TOKEN_TYPE
+        "access_token"  = $str_TRAKT_ACCESS_TOKEN
+        "refresh_token" = $str_TRAKT_REFRESH_TOKEN
+        "created_at"    = $int_TRAKT_CREATED_AT
+        "expires_in"    = $int_TRAKT_EXPIRES_IN
+    }
     
 
     $combined = @()
@@ -115,7 +132,8 @@ function saveDataFile (
 
 
         # Merge data.
-        $combined += $NewPSObject
+        $combined += ( $NewPSObject | ConvertTo-Json) | ConvertFrom-Json
+
     }else{
         # No merge required pass the variable along.
         $combined=$NewPSObject
@@ -137,7 +155,7 @@ function saveDataFile (
 #################
 
 # Loop though all the args to set parameters.
-# Native powershell V6 or lower do not tell the between upper or lower case.
+# Native powershell V6 or lower does not tell the difference between upper or lower case.
 $numOfArgs = $args.Length
 for ($i=0; $i -lt $numOfArgs; $i++)
 {
@@ -173,11 +191,13 @@ for ($i=0; $i -lt $numOfArgs; $i++)
 function scriptSetup() { 
     Write-Host "Starting up Setup Procedure."
     $ExpiresSec=[int]0
+
+    # Chcek if there is a plex user defined or not.
     while ([string]::IsNullOrEmpty($PlexUser)){
         $PlexUser = Read-Host "Enter the Plex username"
     }
 
-    ## Check that we have a value for the Client ID and Secret.
+    # Check that we have a value for the Client ID and Secret.
     while ([string]::IsNullOrEmpty($TRAKT_APPID)) {
         $TRAKT_APPID = Read-Host "Enter Trackt.tv 'Client ID'"
     }
@@ -185,27 +205,23 @@ function scriptSetup() {
         $TRAKT_APPSECRET = Read-Host "Enter Trackt.tv 'Client Secret'"
     }
 
-    ## Write the settings to the config.
-    if (![string]::IsNullOrEmpty($TRAKT_APPID) -and ![string]::IsNullOrEmpty($TRAKT_APPSECRET)) {
-        $ConfigJSON = [PSCustomObject]@{
-            TRAKT_APPID     = $TRAKT_APPID
-            TRAKT_APPSECRET = $TRAKT_APPSECRET
-        }
+    ## Just double check that we got the values. No longer needed but would not hurt.
+    if (![string]::IsNullOrEmpty($TRAKT_APPID) -and ![string]::IsNullOrEmpty($TRAKT_APPSECRET) -and ![string]::IsNullOrEmpty($PlexUser)) {
         
 
-        #Get Device and User Code
+        #Get DeviceID and User Code for authorizing App.
         try
         {
             $Uri="https://api.trakt.tv/oauth/device/code"
             $Body = @{ client_id=$TRAKT_APPID }
-            $TraktRest=Invoke-WebRequest -Uri $Uri -Method POST -Body $Body
+            $TraktRest=Invoke-WebRequest -Uri $Uri -Method POST -Body $Body -UseBasicParsing
             $TraktRest=$TraktRest.Content | ConvertFrom-Json
 
             $User_CODE=$TraktRest.user_code
             $ExpiresSec=[int]$TraktRest.expires_in
             
 
-            Write-Host "Autorize the aplication.`n1. Open the URL https://trakt.tv/activate`n2. Copy the temp code $User_CODE (Note it is already in the windows clipboard)`n3. Accept Web prompts.`n`nThis Screen will auto refresh untill the token is accepted.`n  There are $ExpiresSec seconds untill the code $User_CODE expires.`n`n"
+            Write-Host "`n`nAutorize the aplication.`n1. Open the URL https://trakt.tv/activate`n2. Copy the temp code $User_CODE (Note it is already in the windows clipboard)`n3. Accept Web prompts.`n`nThis Screen will auto refresh untill the token is accepted.`n  There are $ExpiresSec seconds untill the code $User_CODE expires.`n`n"
             Set-Clipboard -Value $User_CODE
             Start-Process "https://trakt.tv/activate"
             
@@ -225,7 +241,7 @@ function scriptSetup() {
                         client_id=$TRAKT_APPID
                         client_secret=$TRAKT_APPSECRET
                     }
-                    $TraktOAuth=Invoke-WebRequest -Uri $Uri -Method POST -Body $Body
+                    $TraktOAuth=Invoke-WebRequest -Uri $Uri -Method POST -Body $Body -UseBasicParsing
                     $Stats=[INT]$TraktOAuth.StatusCode
 
                     $TraktOAuth=$TraktOAuth.Content | ConvertFrom-Json
@@ -300,6 +316,7 @@ function refreshToken() {
         $DataJSONRows=$DataJSON.Count
         for ($i = 0; $i -le $DataJSONRows-1; $i++) {
             if ($DataJSON[$i].PLexUser -eq $PlexUser) { 
+                #User data found and moved to temp object.
                 $PlexUserData += $DataJSON[$i]
             }
         }
@@ -318,7 +335,7 @@ function refreshToken() {
             $OExpiresIn     =    [int32]$PlexUserData[0].expires_in
             $OCreatedAt     =    [int32]$PlexUserData[0].created_at
 
-
+            # Generate auth token for end user. 
             $Uri="https://api.trakt.tv/oauth/token"
             $Body = @{
                 refresh_token=$ORefreshToken
@@ -328,7 +345,7 @@ function refreshToken() {
                 grant_type="refresh_token"
             }
         
-            $TraktOAuth=Invoke-WebRequest -Uri $Uri -Method POST -Body $Body
+            $TraktOAuth=Invoke-WebRequest -Uri $Uri -Method POST -Body $Body -UseBasicParsing
             $Stats=[INT]$TraktOAuth.StatusCode
         
             $TraktOAuth=$TraktOAuth.Content | ConvertFrom-Json
@@ -431,18 +448,18 @@ if ([System.IO.File]::Exists($ScriptData)) {
     #Look at the last record of data found for the user.
     if ($PlexUserData.Count -gt 0) {
 
-        $TRAKT_APPID=$PlexUserData.client_id
-        $TRAKT_APPSECRET=$PlexUserData.client_secret
-        $DeviceCode=$PlexUserData.device_code
-        $UserCode=$PlexUserData.user_code
-        $OTokentype=$PlexUserData.token_type
-        $OScope=$PlexUserData.scope
-        $OAccessToken=$PlexUserData.access_token
-        $ORefreshToken=$PlexUserData.refresh_token
-        $OExpiresIn=[int32]$PlexUserData.expires_in
-        $OCreatedAt=[int32]$PlexUserData.created_at
+        $TRAKT_APPID     = $PlexUserData.client_id
+        $TRAKT_APPSECRET = $PlexUserData.client_secret
+        $DeviceCode      = $PlexUserData.device_code
+        $UserCode        = $PlexUserData.user_code
+        $OTokentype      = $PlexUserData.token_type
+        $OScope          = $PlexUserData.scope
+        $OAccessToken    = $PlexUserData.access_token
+        $ORefreshToken   = $PlexUserData.refresh_token
+        $OExpiresIn      = [int32]$PlexUserData.expires_in
+        $OCreatedAt      = [int32]$PlexUserData.created_at
 
-        # Check if we need to refresh the token.
+        # Check if we the token has expired.
         if ($OCreatedAt +$OExpiresIn -le $CurrentUnix) {
              Write-Host "Refreshing Token"
 
@@ -458,6 +475,7 @@ if ([System.IO.File]::Exists($ScriptData)) {
 
 
 } else {
+    Write-Host "No Data file found at locaion below:`n$ScriptData`nRun setup.`n`n"
     scriptSetup
 }
 
@@ -499,7 +517,7 @@ if ($FoundUser) {
         }
         $Stats=[INT]0
         try {
-            $Scrobble=Invoke-WebRequest -Uri $Uri -Method POST -Body $Body -Headers $Headders
+            $Scrobble=Invoke-WebRequest -Uri $Uri -Method POST -Body $Body -Headers $Headders -UseBasicParsing
             $Stats=[INT]$Scrobble.StatusCode
 	        if ([System.IO.File]::Exists($ScriptDebug)) {
                     $ScrobbleDebug=$Scrobble.Content | ConvertFrom-Json
@@ -508,7 +526,6 @@ if ($FoundUser) {
 	        }
         } catch {
             # Dig into the exception to get the Response details.
-            # Note that value__ is not a typo.
             $Stats=[INT]$_.Exception.Response.StatusCode.value__ 
             #Write-Host "StatusDescription:" $_.Exception.Response.StatusDescription
         }
