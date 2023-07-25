@@ -32,7 +32,7 @@ Powershell script to send Tautulli notificaions for multiple users to Trakt.
 
 ### Installation
     CD "<Enter Install Path>"
-    Invoke-WebRequest https://raw.githubusercontent.com/frugglehost/TautulliBatch2Trakt/master/TautulliBatch2Trakt.ps1 -OutFile TautulliBatch2Tra22kt.ps1
+    Invoke-WebRequest https://raw.githubusercontent.com/frugglehost/TautulliBatch2Trakt/master/TautulliBatch2Trakt.ps1 -OutFile TautulliBatch2Trakt.ps1
     ICACLS "TautulliBatch2Trakt.ps1" /grant:r "Everyone:(F)" /C
 
 ### Script Setup
