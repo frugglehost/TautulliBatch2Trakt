@@ -125,6 +125,7 @@ Distributed under the GPL License.
 - https://github.com/dabiggm0e/plextrakt  
 - https://github.com/trakt/Plex-Trakt-Scrobbler
 - https://github.com/Generator/tautulli2trakt
+- https://github.com/TheGeeKing/TautulliPython2Trakt
 
 ## Bug Squashers!
 * <a href="https://github.com/TheGeeKing">TheGeeKing</a>
